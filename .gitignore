@@ -1,0 +1,18 @@
+.vscode
+.vscode/
+
+
+# Client
+open-redis-client/target
+open-redis-client/target/
+
+open-redis-client/.vscode
+open-redis-client/.vscode/
+
+
+# Server 
+open-redis-server/target
+open-redis-server/target/
+
+open-redis-client/.vscode
+open-redis-client/.vscode/
