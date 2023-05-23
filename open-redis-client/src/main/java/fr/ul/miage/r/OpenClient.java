@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.List;
 import java.util.Scanner;
 
 import org.slf4j.Logger;
@@ -18,6 +19,8 @@ public class OpenClient
 {
     public static final Logger logger = LoggerFactory.getLogger(OpenClient.class);
 
+    public static boolean subscription = false;
+
     public static void main( String[] args )
     {
         String request = "";
@@ -28,13 +31,19 @@ public class OpenClient
             while(!"exit".equalsIgnoreCase(request)) {
                 request = scanner.nextLine();
                 try (Socket socket = new Socket("localhost", 6379);) {
-                    //establish socket connection to server
-                    
-
                     //write to socket using ObjectOutputStream
                     out = new PrintWriter(socket.getOutputStream(), true);
                     out.println(request);
-
+                    
+                    String req = request.split(" ")[0];
+                    subscription = true;
+                    if (req.equalsIgnoreCase("subscribe")) {
+                        new Listener(socket).start();
+                        while (subscription && !"unsubscribe".equals(request)) {
+                            request = scanner.nextLine();
+                            out.println(request);
+                        }
+                    }
                     //read the server response message
                     in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                     String line = "";
