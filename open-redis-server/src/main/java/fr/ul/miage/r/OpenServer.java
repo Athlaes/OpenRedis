@@ -1,8 +1,9 @@
 package fr.ul.miage.r;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
@@ -52,18 +53,18 @@ public class OpenServer
                 Socket socket = server.accept();
 
                 // read request 
-                ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
-                request = (String) ois.readObject();
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                request = in.readLine();
 
-                String response = manageRequest(request);
+                String response = manageMultipleRequest(request);
 
                 // write response
-                ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-                oos.writeObject(response);
+                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+                out.println(response);
 
                 //close resources
-                ois.close();
-                oos.close();
+                in.close();
+                out.close();
                 socket.close();
             } catch (Exception e) {
                 logger.error("La requête n'a pas pu être traité correctement", e);
@@ -78,73 +79,16 @@ public class OpenServer
         }
     }
 
-    private static String manageRequest(String request) {
-        String res = "OK";
-        String[] parsedRequest = request.split(" ");
-        String command = parsedRequest[0];
-        if (!command.isEmpty()) {
-            switch (command.toLowerCase()) {
-                case "set":
-                    data.put(res, command);
-                    break;
-                case "get":
-                    if (data.containsKey(parsedRequest[1])) {
-                        res = data.get(parsedRequest[1]);
-                    } else {
-                        res = UNKNOWN_KEY;
-                    }
-                    break;
-                case "strlen":
-                    if (data.containsKey(parsedRequest[1])) {
-                        res = Integer.toString(data.get(parsedRequest[1]).length());
-                    } else {
-                        res = UNKNOWN_KEY;
-                    }
-                    break;
-                case "append":
-                    if (data.containsKey(parsedRequest[1])) {
-                        res = Integer.toString(data.get(parsedRequest[1]).length());
-                    } else {
-                        res = UNKNOWN_KEY;
-                    }
-                    break;
-                case "incr":
-                    if (data.containsKey(parsedRequest[1])) {
-                        int val = Integer.parseInt(data.get(parsedRequest[1]));
-                        data.replace(parsedRequest[1], Integer.toString(val+1));
-                    } else {
-                        res = UNKNOWN_KEY;
-                    }
-                    break;
-                case "decr":
-                    if (data.containsKey(parsedRequest[1])) {
-                        int val = Integer.parseInt(data.get(parsedRequest[1]));
-                        data.replace(parsedRequest[1], Integer.toString(val-1));
-                    } else {
-                        res = UNKNOWN_KEY;
-                    }
-                    break;
-                case "exists":
-                    if (data.containsKey(parsedRequest[1])) {
-                        res = "true";
-                    } else {
-                        res = "false";
-                    }
-                    break;
-                case "del":
-                    if (data.containsKey(parsedRequest[1])) {
-                        data.remove(parsedRequest[1]);
-                    } else {
-                        res = UNKNOWN_KEY;
-                    }
-                    break;
-                case "expire":
-                    res = addExpiration(parsedRequest);
-                    break;
-                default:
-                    res = "La commande n'a pas été comprise";
-                    break;
-            }
+    private static String manageMultipleRequest(String request) {
+        String res = "";
+        String[] multipleRequest = request.split("%n");
+        if (multipleRequest.length == 1) {
+            multipleRequest = request.split(">");
+        }
+        for (int i = 0; i < multipleRequest.length; i++) {
+            String req = multipleRequest[i].replaceAll("^ ", "");
+            res += manageRequest(req);
+            res += (i == multipleRequest.length-1)?"":"\n";
         }
         logger.info("done.");
         return res;
@@ -165,7 +109,84 @@ public class OpenServer
                 res = "Impossible de récupérer la durée, la commande précédente n'a pas été exécuté";
             }
         } else {
-            res = "La clé n'a pas été trouvé";
+            res = UNKNOWN_KEY;
+        }
+        return res;
+    }
+
+    private static String manageRequest(String request) {
+        String res = "OK";
+        String[] parsedRequest = request.split(" ");
+        String command = parsedRequest[0];
+        switch (command.toLowerCase()) {
+            case "set":
+                data.put(parsedRequest[1], parsedRequest[2]);
+                break;
+            case "get":
+                if (data.containsKey(parsedRequest[1])) {
+                    res = data.get(parsedRequest[1]);
+                } else {
+                    res = UNKNOWN_KEY;
+                }
+                break;
+            case "strlen":
+                if (data.containsKey(parsedRequest[1])) {
+                    res = Integer.toString(data.get(parsedRequest[1]).length());
+                } else {
+                    res = UNKNOWN_KEY;
+                }
+                break;
+            case "append":
+                if (data.containsKey(parsedRequest[1])) {
+                    data.replace(parsedRequest[1], data.get(parsedRequest[1])+parsedRequest[2]);
+                } else {
+                    res = UNKNOWN_KEY;
+                }
+                break;
+            case "incr":
+                if (data.containsKey(parsedRequest[1])) {
+                    try {
+                        int val = Integer.parseInt(data.get(parsedRequest[1]));
+                        data.replace(parsedRequest[1], Integer.toString(val+1));
+                    } catch (NumberFormatException e) {
+                        res = "La valeur de cette clé n'est pas numérique";
+                    }
+                } else {
+                    res = UNKNOWN_KEY;
+                }
+                break;
+            case "decr":
+                if (data.containsKey(parsedRequest[1])) {
+                    try {
+                        int val = Integer.parseInt(data.get(parsedRequest[1]));
+                        data.replace(parsedRequest[1], Integer.toString(val-1));
+                    } catch (NumberFormatException e) {
+                        res = "La valeur de cette clé n'est pas numérique";
+                    }
+                } else {
+                    res = UNKNOWN_KEY;
+                }
+                break;
+            case "exists":
+                if (data.containsKey(parsedRequest[1])) {
+                    res = "true";
+                } else {
+                    res = "false";
+                }
+                break;
+            case "del":
+                if (data.containsKey(parsedRequest[1])) {
+                    data.remove(parsedRequest[1]);
+                } else {
+                    res = UNKNOWN_KEY;
+                }
+                break;
+            case "expire":
+                res = addExpiration(parsedRequest);
+                break;
+            default:
+                res = "La commande n'a pas été comprise";
+                break;
         }
         return res;
     }
