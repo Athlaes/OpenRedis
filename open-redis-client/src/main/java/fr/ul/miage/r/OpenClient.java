@@ -4,7 +4,7 @@ package fr.ul.miage.r;
  * Hello world!
  *
  */
-public class App 
+public class OpenClient 
 {
     public static void main( String[] args )
     {
