@@ -3,11 +3,11 @@ package fr.ul.miage.r;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Scanner;
 import java.util.Timer;
 
 import org.slf4j.Logger;
@@ -30,6 +30,8 @@ public class OpenServer
     private static int port = 6379;
 
     public static final Timer timer = new Timer();
+
+    private static boolean slave = false;
     
     public static void main( String[] args )
     {
@@ -39,12 +41,12 @@ public class OpenServer
             logger.error("Impossible d'ouvrir le serveur sur le port 6379", e);
         }
         logger.info("Waiting for clients");
-        try {
-            while (true) {
-                new ServerHandler(server.accept()).start();
+        new RequestListener(server).start();
+        try(Scanner scanner = new Scanner(System.in)) {
+            String req = "";
+            while (!req.equalsIgnoreCase("exit") && !slave) {
+                req = scanner.nextLine();
             }
-        } catch (IOException e) {
-            logger.error("Impossible d'ouvrir le serveur sur le port 6379", e);
         }
     }
 
@@ -59,13 +61,15 @@ public class OpenServer
         logger.info("Added a subscriber");
     }
 
-    public static void sendMessage (String channel, String message) {
+    public static String sendMessage (String channel, String message) {
         String lowChannel = channel.toLowerCase();
         if (Objects.nonNull(subscriptions.get(lowChannel)) && !subscriptions.get(lowChannel).isEmpty()) {
             for (ServerHandler subscriber : subscriptions.get(lowChannel)) {
                 subscriber.receiveMessage(lowChannel, message);
             }
+            return Integer.toString(subscriptions.get(lowChannel).size());
         }
+        return "0";
     }
 
     public static void unregister (String channel, ServerHandler serverHandler) {

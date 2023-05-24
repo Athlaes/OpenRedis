@@ -15,7 +15,7 @@ public class ServerHandler extends Thread {
      *
      */
     private static final String PARAM_UNCOMPLETE = "Nombre de paramètre insuffisant";
-    private static final String UNKNOWN_KEY = "La clé n'est pas présente sur le serveur";
+    private static final String UNKNOWN_KEY = "nil";
     public static final Logger logger = LoggerFactory.getLogger(ServerHandler.class);
     private Socket socket;
     private BufferedReader in;
@@ -63,25 +63,21 @@ public class ServerHandler extends Thread {
     }
 
     private String addExpiration(String[] parsedRequest) {
-        String res = "OK";
-        if (parsedRequest.length == 2) {
-            final String key = parsedRequest[1];
-            if (OpenServer.data.containsKey(key)) {
-                try {
-                    OpenServer.timer.schedule(new TimerTask() {
-                        @Override
-                        public void run() {
-                            OpenServer.data.remove(key);
-                        }
-                    }, Long.parseLong(parsedRequest[2]));
-                } catch (NumberFormatException e) {
-                    res = "Impossible de récupérer la durée, la commande précédente n'a pas été exécuté";
-                }
-            } else {
-                res = UNKNOWN_KEY;
+        String res = "1";
+        final String key = parsedRequest[1];
+        if (parsedRequest.length >= 2 && OpenServer.data.containsKey(key)) {
+            try {
+                OpenServer.timer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        OpenServer.data.remove(key);
+                    }
+                }, Long.parseLong(parsedRequest[2]));
+            } catch (NumberFormatException e) {
+                res = "0";
             }
         } else {
-            res = PARAM_UNCOMPLETE;
+            res = "0";
         }
         return res;
     }
@@ -93,7 +89,7 @@ public class ServerHandler extends Thread {
         if (request.length == 2) {
             try {
                 OpenServer.register(channel, this);
-                this.out.println("Hello");
+                this.out.println("Subscribe " + channel);
                 while ((line = this.in.readLine()) != null) {
                     String[] parsedLine = line.split(" ");
                     if ("publish".equalsIgnoreCase(parsedLine[0]) && parsedLine.length == 3) {
@@ -110,6 +106,31 @@ public class ServerHandler extends Thread {
             res = PARAM_UNCOMPLETE;
         }
         return res;
+    }
+
+    private String exists(String[] parsedRequest) {
+        int res = 0;
+        if (parsedRequest.length >= 2) {
+            for(int i = 1; i < parsedRequest.length; i++) {
+                if (OpenServer.data.containsKey(parsedRequest[i])) {
+                    res++;
+                }
+            }
+        }
+        return Integer.toString(res);
+    }
+
+    private String deleteKeys(String[] parsedRequest){
+        int res = 0;
+        if (parsedRequest.length >= 2) {
+            for(int i = 1; i < parsedRequest.length; i++){
+                if (OpenServer.data.containsKey(parsedRequest[i])) {
+                    OpenServer.data.remove(parsedRequest[i]);
+                    res ++;
+                }
+            }
+        }
+        return Integer.toString(res);
     }
 
     private String manageRequest(String request) {
@@ -135,14 +156,17 @@ public class ServerHandler extends Thread {
                 if (parsedRequest.length == 2 && OpenServer.data.containsKey(parsedRequest[1])) {
                     res = Integer.toString(OpenServer.data.get(parsedRequest[1]).length());
                 } else {
-                    res = UNKNOWN_KEY;
+                    res = "0";
                 }
                 break;
             case "append":
-                if (parsedRequest.length == 3 && OpenServer.data.containsKey(parsedRequest[1])) {
-                    OpenServer.data.replace(parsedRequest[1], OpenServer.data.get(parsedRequest[1])+parsedRequest[2]);
-                } else {
-                    res = UNKNOWN_KEY;
+                if (parsedRequest.length == 3) {
+                    if(OpenServer.data.containsKey(parsedRequest[1])) {
+                        OpenServer.data.replace(parsedRequest[1], OpenServer.data.get(parsedRequest[1])+parsedRequest[2]);
+                    } else {
+                        OpenServer.data.put(parsedRequest[1], parsedRequest[2]);
+                    }
+                    return OpenServer.data.get(parsedRequest[1]);
                 }
                 break;
             case "incr":
@@ -170,18 +194,10 @@ public class ServerHandler extends Thread {
                 }
                 break;
             case "exists":
-                if (parsedRequest.length == 2 && OpenServer.data.containsKey(parsedRequest[1])) {
-                    res = "true";
-                } else {
-                    res = "false";
-                }
+                res = this.exists(parsedRequest);
                 break;
             case "del":
-                if (parsedRequest.length == 2 && OpenServer.data.containsKey(parsedRequest[1])) {
-                    OpenServer.data.remove(parsedRequest[1]);
-                } else {
-                    res = UNKNOWN_KEY;
-                }
+                res = this.deleteKeys(parsedRequest);
                 break;
             case "expire":
                 res = this.addExpiration(parsedRequest);
@@ -190,8 +206,10 @@ public class ServerHandler extends Thread {
                 res = this.manageSubscription(parsedRequest);
                 break;
             case "publish":
-                if (parsedRequest.length == 2) {
-                    OpenServer.sendMessage(parsedRequest[1], parsedRequest[2]);
+                if (parsedRequest.length == 3) {
+                    res = OpenServer.sendMessage(parsedRequest[1], parsedRequest[2]);
+                } else {
+                    res = "0";
                 }
                 break;
             default:
