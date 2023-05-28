@@ -13,9 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ServerHandler extends Thread {
-    /**
-     *
-     */
     private static final String PARAM_UNCOMPLETE = "Nombre de paramètre insuffisant";
     private static final String UNKNOWN_KEY = "nil";
     public static final Logger logger = LoggerFactory.getLogger(ServerHandler.class);

@@ -16,3 +16,7 @@ open-redis-server/target/
 
 open-redis-client/.vscode
 open-redis-client/.vscode/
+
+# General
+bin/
+Rendu/

@@ -49,7 +49,7 @@ public class OpenClient {
                     in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                     String line = "";
                     while ((line = in.readLine()) != null) {
-                        System.out.println("Réponse: " + line);
+                        System.out.println(line);
                     }
                     
                     //close resources
