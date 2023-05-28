@@ -18,6 +18,7 @@ public class RequestListener extends Thread {
     @Override
     public void run() {
         try {
+            // On écoute toutes les requêtes qui arrivent sur le serveur, pour chaque requête on créer un thread chargé de gérer et exécuter cette requête.
             while (true) {
                 new ServerHandler(server.accept()).start();
             }

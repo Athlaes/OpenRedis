@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.util.List;
 import java.util.Scanner;
 
 import org.slf4j.Logger;
@@ -15,8 +14,7 @@ import org.slf4j.LoggerFactory;
  * Hello world!
  *
  */
-public class OpenClient 
-{
+public class OpenClient {
     public static final Logger logger = LoggerFactory.getLogger(OpenClient.class);
 
     public static boolean subscription = false;
@@ -26,11 +24,14 @@ public class OpenClient
         String request = "";
         PrintWriter out = null;
         BufferedReader in = null;
-        logger.info("Vous pouvez commencer à taper des commandes !");
         try(Scanner scanner = new Scanner(System.in)) {
-            while(!"exit".equalsIgnoreCase(request)) {
+            logger.info("Sur quel port voulez vous lancé vos requêtes ? (serveur local)");
+            int port = scanner.nextInt();
+            scanner.nextLine();
+            logger.info("Vous pouvez commencer à taper des commandes !");
+            while(!"quit".equalsIgnoreCase(request)) {
                 request = scanner.nextLine();
-                try (Socket socket = new Socket("localhost", 6379);) {
+                try (Socket socket = new Socket("localhost", port);) {
                     //write to socket using ObjectOutputStream
                     out = new PrintWriter(socket.getOutputStream(), true);
                     out.println(request);
